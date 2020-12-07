@@ -1,120 +1,120 @@
---“Proyecto de automatizacion de una lavadora utilizando VHDL 
+--Automation project of a washing machine using VHDL
 --#########################################################################
--- PROGRAMA PARA CICLO DE LAVADO EN 4 ETAPAS
+-- PROGRAM FOR WASHING CYCLE IN 4 STAGES
 
 library ieee;
 use ieee.std_logic_1164.all;
 
--- Describimos, entradas y salidas de la entidad
-entity Ciclo_lavado is
+-- We describe, inputs and outputs of the entity
+entity Wash_cycle is
 port(
-------Entradas------
-    --Pulso de reloj comun
+------Inputs------
+    --Common clock pulse
     clk: in std_logic;
-    -- Boton para detener o continuar con ciclo
+    -- Button to stop or continue cycle
     runstop: in std_logic;
-    -- Boton para dar incio a la secuencia (1)
-    -- Sensor de nivel (0)
-    DatoIn: in std_logic_vector (1 downto 0); 
-    -- Atento a final de time, 10s
+    -- Button to start the sequence (1)
+    -- Level sensor (0)
+    DataIn: in std_logic_vector (1 downto 0); 
+    -- Watch out for the end of the timer, 10s
     Time_10s_up: in std_logic;
-    -- Atento a final de time, 12s
+    -- Watch out for the end of the timer, 12s
     Time_12s_up: in std_logic;
-     -- Atento a final de time, 15s
+     -- Watch out for the end of the timer, 15s
     Time_15s_up: in std_logic;
--------Salidas-------
-    --Valvula de agua caliente (3)
-    --Valvula de agua fria (2)
-    --Valvula de desague (1)
-    --Motor de lavadora (0)
-    --iniciar temporizador de 12 segundos
-    --Iniciar temporizador de 15 segundos
-    DatoOut: out std_logic_vector (3 downto 0); -- senales de salida del registro de corrimiento
-    --Activar inicio de timer 10s
+-------Outputs-------
+    -- Hot water valve (3)
+    --Cold water valve (2)
+    -- Drain valve (1)
+    --Washing machine motor (0)
+    --start 12 second timer
+    --Start 15 second timer
+    DataOut: out std_logic_vector (3 downto 0); -- shift register output signals
+    --Activate start of timer 10s
     iniTime_10s: out std_logic;
-    --Activar inicio de timer 12s
+    --Activate start of timer 12s
     iniTime_12s: out std_logic;
-    --Activar inicio de timer 15s
+    --Activate start of timer 15s
     iniTime_15s: out std_logic
 );
-end Ciclo_lavado;
+end Wash_cycle;
 
--- Describimos la arquitectura de la entidad 
-architecture Completa of Ciclo_lavado is
-    --valores para estado de estados de ciclo
-    type estados is(d0,d1,d2,d3,d4,d5);
-    --variables de estados de ciclo
-    signal edo_presente, edo_futuro:estados; 
+-- we describe the architecture of the entity
+architecture Completa of Wash_cycle is
+    --values for state of cycle states
+    type state is(d0,d1,d2,d3,d4,d5);
+    --cycle state variables
+    signal present_estate, future_estate:state; 
     begin
-    proceso1: process(edo_presente,runstop,DatoIn,Time_10s_up,Time_12s_up,Time_15s_up)--Variables de entrada a tratar
+    description_1: process(present_estate,runstop,DataIn,Time_10s_up,Time_12s_up,Time_15s_up)--Input variables to be treated
         begin
-        case edo_presente is
-            --Atención a boton inicio, no ocurre nada
+        case present_estate is
+            --Attention to start button, nothing happens
             when d0 => 
                 if(runstop='1') then 
-                    if(DatoIn='10') then --Condicion para cambiar de estado 
-                        edo_futuro<=d1; --Termino tareas de este estado, pasamos al siguiente
-                    else DatoOut<="0000";--Todo desactivado
+                    if(DataIn='10') then --Condition to change state
+                        future_estate<=d1; --tasks finished from this state, we go to the next
+                    else DataOut<="0000";--All off
                     end if;
-                else edo_futuro<= d0; -- estado futuro sigue siendo el estado actual
-                end if; -- Fin de primera condicion
+                else future_estate<= d0; -- future state remains current state
+                end if; -- End of first condition
         
-            -- Se enciende la vaalvula de agua fria.
+            -- The cold water valve turns on.
             when d1 => 
                 if(runstop='1') then
-                    if(DatoIn='01') -- Si es activado el sensor de nivel
-                        edo_futuro<= d2; --Pasamos al siguiente estado
-                    else DatoOut<="0100"; --Se activa valvula de agua fria 
+                    if(DataIn='01') -- If the level sensor is activated
+                        future_estate<= d2; --We go to the next state
+                    else DataOut<="0100"; --Cold water valve is activated
                     end if;
-                else edo_futuro <= d1; -- estado futuro sigue siendo el estado actual
-                DatoOut<="0000";--Todo desactivado
-                end if; -- Fin de primera condicion
+                else future_estate <= d1; -- future state remains current state
+                DataOut<="0000";--All off
+                end if; -- End of second condition
     
-            -- Se apaga la valvula de agua fria y enciende la de agua caliente durante diez segundos.
+            -- The cold water valve is turned off and the hot water valve on for ten seconds.
             when d2 => 
                 if(runstop='1') then
-                    iniTime_10s<='1';-- Activamos el timer de 10 segundos
+                    iniTime_10s<='1';-- We activate timer 10s
                     if(Time_10s_up='1')then
-                        edo_futuro<=d3; -- Pasamos al siguiente estado
-                        iniTime_10s<='0';-- Desactivo el timer de 10 segundos
-                    else DatoOut<="1000"; -- Se activa valvula de agua caliente 
+                        future_estate<=d3; -- We go to the next state
+                        iniTime_10s<='0';-- Deactivate the 10 second timer
+                    else DataOut<="1000"; -- Hot water valve is activated 
                     end if;
-                else edo_futuro <= d2; -- estado futuro sigue siendo el estado actual
-                DatoOut<="0000";--Todo desactivado
-                end if;
+                else future_estate <= d2; -- future state remains current state
+                DataOut<="0000";--All off
+                end if;--End of third condition
             
-            -- Apagar la valvula de agua caliente y encender el motor.
+            -- Turn off the hot water valve and start the engine.
             when d3 => 
                 if(runstop='1') then
-                    iniTime_12s<='1'; --Activamos timer 
+                    iniTime_12s<='1'; --We activate timer 12s
                     if(Time_12s_up='1')then
-                        edo_futuro<=d4; -- Pasamos al siguiente estado
-                        iniTime_12s<='0';--Desactivamos timer 
-                    else DatoOut<="0001"; -- Se activa valvula de agua caliente
+                        future_estate<=d4; -- We go to the next state
+                        iniTime_12s<='0';--Disable timer
+                    else DataOut<="0001"; -- activate motor and wash
                     end if;
-                else edo_futuro <= d3; -- estado futuro sigue siendo el estado actual
-                DatoOut<="0000";--Todo desactivado
+                else future_estate <= d3; -- future state remains current state
+                DataOut<="0000";--All off
                 end if;
             
-            -- Apagar el motor y encender la valvula de desague   
+            -- Stop the engine and turn on the drain valve  
             when d4 =>
                 if(runstop='1') then
-                    iniTime_15s<='1';--Activamos timer 
+                    iniTime_15s<='1';--We activate timer 15s 
                     if(Time_15s_up='1')then
-                        edo_futuro<= d0; -- Pasamos al siguiente estado
-                        iniTime_15s<='0';--Desactivamos timer 
-                    else DatoOut<="0010"; -- Se activa valvula de agua caliente
+                        future_estate<= d0; -- We go to the next state
+                        iniTime_15s<='0';--Disable timer
+                    else DataOut<="0010"; -- Drain valve is activated
                     end if;
-                else edo_futuro <= d4; -- estado futuro sigue siendo el estado actual
-                DatoOut<="0000";--Todo desactivado
+                else future_estate <= d4; -- future state remains current state
+                DataOut<="0000";--All off
                 end if;
         end case;
-    end process proceso1; -- Fin de la descripcion del proceso1
+    end process proceso1; -- End of process description_1
         
-    proceso2: process (clk)--Deteccion de pulsos de reloj
+    process_2: process (clk)--Clock pulse detection
         begin
-        if(clk'event and clk='1') then -- Si pulso de reloj, estado fututo pasa a ser presente
-            edo_presente <= edo_futuro;
+        if(clk'event and clk='1') then -- If there is a clock pulse, future state becomes present
+            present_estate <= future_estate;
         end if;
-    end process proceso2;-- Fin de la descripcion del proceso2
-end Completa; --Fin de la descripcion de la arquitectura
+    end process process_2;-- End of the description of process_2
+end Completa; --End of architecture description
